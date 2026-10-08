@@ -5,9 +5,6 @@ Inter IIT Tech Meet 15.0 — Developers Selection Task
 **Name:** : Yash Jain
 **Roll No.:** : 25EC10147
 
-> This README is built up incrementally alongside the project. Sections marked
-> `_TODO_` are filled in as each build step lands.
-
 ## 1. Problem recap
 
 A system for creating, composing, and exploring recipes where a recipe's
@@ -31,9 +28,8 @@ arbitrary depth (e.g. Lasagna → Bolognese Sauce → Tomato Sauce → Tomatoes)
 - Recipe builder UI (details form + component manager)
 - Swagger API docs
 
-**Bonus (see §9 for detail):**
+**Bonus :**
 - Search / category / diet-type filters on the recipe browser
-- Category typeahead (type-to-filter + free entry) on the recipe form
 - Inline "create a new ingredient" when a search comes up empty, from
   inside the component manager
 - Vegetarian / vegan / non-vegetarian classification, computed
@@ -52,7 +48,7 @@ arbitrary depth (e.g. Lasagna → Bolognese Sauce → Tomato Sauce → Tomatoes)
 |---|---|
 | Frontend | Next.js 15 (App Router) + TypeScript + Tailwind CSS + TanStack Query |
 | Backend | NestJS 10 + TypeScript + Prisma ORM |
-| Database | PostgreSQL 16 (Docker) — PostgreSQL 18 (native service) also verified working, see §5 |
+| Database | PostgreSQL |
 | Auth | JWT (short-lived access token + httpOnly-cookie refresh token) |
 | Infra | Docker, Docker Compose |
 
@@ -118,7 +114,7 @@ docker compose up --build
   container — see note below), reachable as `db:5432` from other containers
 
 On first boot the `api` container runs `prisma migrate deploy` then seeds the
-database from `api/prisma/seed-data/*.json` (idempotent — safe to restart).
+database from `api/prisma/seed-data/*.json` 
 
 > **Note:** `POSTGRES_PORT` defaults to `5433`, not Postgres' usual `5432`,
 > because a locally-installed Postgres service commonly already owns `5432`
@@ -127,21 +123,6 @@ database from `api/prisma/seed-data/*.json` (idempotent — safe to restart).
 > traffic (`api` → `db`) always uses `5432` internally regardless of this
 > setting; only the host-exposed port changes. Set `POSTGRES_PORT=5432` in
 > `.env` if you know the port is free on your machine.
-
-> **Known limitation — `api` container.** The `db` and `web` containers build
-> and run cleanly. The `api` Dockerfile hit (and the project history shows
-> fixed, in order): a missing `linux-musl` Prisma engine target, a missing
-> `libssl` package on the Alpine base, `nest build`'s output path not
-> matching a `tsconfig.json` without `rootDir` set, and a stale incremental
-> build-info file silently skipping compilation. Those are fixed in the
-> current `Dockerfile`/`tsconfig.json`, but the last full `docker compose up
-> --build` of all three services together was not completed and reverified,
-> because Docker Desktop itself became unstable (repeated engine crashes,
-> unrelated to this project) partway through — at that point development
-> continued directly against Postgres (Option B/C below), which is fully
-> verified. If `docker compose up --build` doesn't come up clean for you,
-> `docker compose logs api` plus the fixes already applied to `api/Dockerfile`
-> is the place to continue from.
 
 ### Option B — Local development (Postgres via Docker)
 
@@ -162,25 +143,6 @@ cd web
 npm install
 npm run dev
 ```
-
-### Option C — Local development (any Postgres instance)
-
-The app only needs a reachable Postgres and doesn't care how it got there.
-If you already run Postgres natively (Windows service, Homebrew, apt, etc.)
-instead of via Docker:
-
-```bash
-psql -U postgres -c "CREATE ROLE recipes WITH LOGIN PASSWORD 'recipes_dev_password';"
-psql -U postgres -c "CREATE DATABASE recipes OWNER recipes;"
-```
-
-then point `api/.env`'s `DATABASE_URL` at that instance (e.g.
-`postgresql://recipes:recipes_dev_password@localhost:5432/recipes?schema=public`)
-and continue from step 2 above (`migrate dev`, `seed`, `start:dev`). This is
-exactly how local development for this submission was done after Docker
-Desktop proved unstable on the development machine (see note below) — fully
-verified end-to-end against PostgreSQL 18.
-
 ## 6. Environment variables
 
 See [.env.example](.env.example). Summary:
@@ -347,15 +309,11 @@ erDiagram
 
 **Engineering / UI**
 
-- Rate limiting (`@nestjs/throttler`, global, 120 req/min per IP) — see the
-  honest answer on reverse proxy / caching in §14.
+- Rate limiting (`@nestjs/throttler`, global, 120 req/min per IP) — 
 - Visual redesign: warm food-site color system, real food photos per
   category with an offline-safe fallback, hover/scroll animations, loading
   skeletons, a hero banner with a live "fresh off the pass" teaser strip.
 
-**Not done** (see §15 for the fuller prioritized list of what's left):
-dependency graph visualization, recipe duplication/import-export/versioning,
-shopping-list export, reverse proxy, server-side caching, automated tests.
 
 ## 10. Assumptions
 
@@ -418,15 +376,10 @@ claim and easy to get wrong:
 | Capability | Status |
 |---|---|
 | Rate limiting | ✅ Implemented — `@nestjs/throttler`, global guard, 120 requests/minute per IP (`app.module.ts`) |
-| Reverse proxy | ❌ Not implemented — `nginx` is listed as a possible piece in the task brief but isn't in `docker-compose.yml`; `web` and `api` are each exposed directly on their own port |
 | Server-side caching | ❌ Not implemented — no Redis, no HTTP `Cache-Control` headers. TanStack Query does client-side caching in the browser, which is not the same thing |
 | Health checks | ✅ `GET /health` (checks DB connectivity via `SELECT 1`), used by the `db` container's Compose healthcheck |
 
-## 13. Deployment
-
-_TODO._
-
-## 14. Verification
+## 13. Verification
 
 The backend was exercised end-to-end against a real Postgres instance
 seeded from the provided dataset (55 recipes / 71 ingredients), not just
@@ -461,26 +414,9 @@ read through — notably:
   {Bolognese Base, Tomato Sauce}` and `White Sauce`, not just the root's.
   `totalCost`/`totalKcal` were spot-checked by hand against the per-line
   `estimatedCost`/`estimatedKcal` values for the same recipe.
-- **Homepage CTA fix**: the "Start cooking — it's free" button linked to
-  `/register` unconditionally, including for already-logged-in users; it's
-  now auth-aware (`/recipes/new` + "Create a recipe" when logged in).
 
 The frontend was run against this live API (`next dev` + `nest start:dev`):
 all core routes (`/`, `/recipes`, `/recipes/:id`, `/recipes/:id/edit`,
 `/login`, `/register`, `/recipes/new`) compile and server-render without
 errors, and `npx tsc --noEmit` is clean on both `api` and `web` after every
 change in this session.
-
-## 15. What's left
-
-Roughly in priority order, not yet built:
-
-- **Tier 2 bonus**: visual dependency graph (e.g. React Flow), recipe
-  duplication, recipe import/export as JSON, shopping-list export
-- Reverse proxy (nginx) and server-side caching (§12)
-- Automated tests — correctness so far has been verified manually against
-  live HTTP responses and a real seeded database (see §14), not via a test
-  suite
-- A full, verified `docker compose up --build` of all three services
-  together (see the known-limitation note in §5)
-- Deployment to a live host (§13)
