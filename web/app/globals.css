@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* No external webfont dependency — a rounded, friendly system stack
+     stands in for a "display" font so the brand still feels distinct
+     without a network fetch at build or render time. */
+  --font-display: ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  background-color: #fffbf5; /* warm cream, not stark white */
+}
+
+/* Loading shimmer for image placeholders while a food photo streams in. */
+.img-shimmer {
+  background: linear-gradient(90deg, #fde8cf 0%, #fff3e0 50%, #fde8cf 100%);
+  background-size: 800px 100%;
+}
+
