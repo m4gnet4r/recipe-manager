@@ -22,8 +22,10 @@ RUN npm config set fetch-retries 5 \
 # resolves to at `prisma generate` time, so one explicit target covers both.
 ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
 # Cache mount so a retry after a network reset resumes from what's already
-# fetched instead of starting the npm cache over from zero.
-RUN --mount=type=cache,target=/root/.npm npm install
+# fetched instead of starting the npm cache over from zero. `id=` is
+# required by Railway's builder even though plain Docker/BuildKit doesn't
+# strictly need it for a single mount.
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm install
 COPY . .
 RUN npm run prisma:generate
 RUN npm run build
